@@ -1,0 +1,104 @@
+import os
+from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+from pytgcalls import PyTgCalls
+from pytgcalls.types import AudioPiped
+from telethon import TelegramClient
+import tgcrypto
+
+# تثبيت المكتبات تلقائياً لو مش موجودة
+try:
+    from pyrogram import Client, filters
+    from pytgcalls import PyTgCalls
+    from telethon import TelegramClient
+    import tgcrypto
+except ImportError:
+    os.system("pip install pyrogram tgcrypto pytgcalls telethon")
+
+# إعدادات البوت
+api_id = "28938802"
+api_hash = "b14817af4a8ea706237da4f212e15287"
+bot_token = "7749439832:AAFbAn6A6z7cXSSluTihfIvSqHncQmkEV6M"
+
+# جلسات البوت والحساب المساعد
+app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
+assistant = TelegramClient("1BJWap1sBuy9IezCO0DWySaPFKQDpopJAj04oTP0gyQFG0wXVFYkkK2CxWTMBBLWZBkKT6uuFLkdbexmJJeHxWswaToXhwVlbEo8Hfp-Zz3ubHQMDPt0_tjHmYvM4qD0Fk-sC9mAETVSpqSEgl_MGGhIfiLcgta_ZXSh452IxOpQ-Axx8In9slUnv1KyYyhjqAZiwe_3UyMTWFxzXuv5fPikU-H8BkIFGC3iJuR74ljFP-rfUGm80NYZGX14qWYrAQaDQaLvIAWrYy0YTsnIlefX8bYuC7DKsqElWQ6wTpKdTyVpt6QraO0mbz2bYYdR-YrZ1kqjrJJiv93NQv5QG_qwjD8hFWQg=", api_id, api_hash)
+pytgcalls = PyTgCalls(app)
+
+# 1. تشغيل الموسيقى في المكالمات
+@app.on_message(filters.command("play") & filters.group)
+async def play_music(client, message: Message):
+    if message.reply_to_message and message.reply_to_message.audio:
+        audio = message.reply_to_message.audio
+        file_path = await message.reply_to_message.download()
+
+        # تشغيل الصوت في المكالمة باستخدام الحساب المساعد
+        await pytgcalls.join_group_call(
+            message.chat.id,  # معرف الجروب
+            AudioPiped(file_path),  # تشغيل الصوت من الملف الذي تم تنزيله
+        )
+        
+        await message.reply("تم تشغيل الأغنية في المكالمة 🎶")
+    else:
+        await message.reply("يرجى الرد على رسالة تحتوي على ملف صوتي لتشغيله.")
+
+@app.on_message(filters.command("stop") & filters.group)
+async def stop_music(client, message: Message):
+    await pytgcalls.leave_group_call(message.chat.id)
+    await message.reply("تم إيقاف تشغيل الأغنية.")
+
+# 2. ألعاب كت تويت
+@app.on_message(filters.command("truthordare") & filters.group)
+async def truth_or_dare(client, message):
+    options = ["حقيقة", "تحدي"]
+    await message.reply_text(f"اختر: {options}")
+
+# 3. الرد على من ينادي المالك
+@app.on_message(filters.group)
+async def mention_owner(client, message):
+    if "المالك" in message.text:
+        await message.reply("المالك هنا لو محتاج أي حاجة!")
+
+# 4. كتم وحظر وتقييد
+@app.on_message(filters.command("ban") & filters.group)
+async def ban_member(client, message):
+    if message.reply_to_message:
+        await client.kick_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+        await message.reply("تم حظر العضو.")
+
+@app.on_message(filters.command("mute") & filters.group)
+async def mute_member(client, message):
+    if message.reply_to_message:
+        await client.restrict_chat_member(message.chat.id, message.reply_to_message.from_user.id, can_send_messages=False)
+        await message.reply("تم كتم العضو.")
+
+# 5. الإذاعة والاشتراك الإجباري
+@app.on_message(filters.command("broadcast") & filters.private)
+async def broadcast(client, message):
+    # إرسال رسالة للإذاعة هنا، يتطلب قائمة بالمجموعات أو القنوات
+    await message.reply("تم إرسال الإذاعة للمجموعات المحددة.")
+
+@app.on_message(filters.command("subscribe") & filters.private)
+async def subscribe(client, message):
+    button = [[InlineKeyboardButton("الاشتراك هنا", url="https://t.me/YourChannel")]]
+    await message.reply("يرجى الاشتراك في القناة للاستمرار.", reply_markup=InlineKeyboardMarkup(button))
+
+# 6. الردود التلقائية
+@app.on_message(filters.text & filters.group)
+async def auto_reply(client, message):
+    if "مرحبا" in message.text:
+        await message.reply("أهلاً! كيف أساعدك؟")
+
+# 7. عرض المعلومات عند كتابة "ايدي"
+@app.on_message(filters.regex(r"(?i)^ايدي$") & filters.group)
+async def show_id(client, message):
+    user_id = message.from_user.id
+    username = message.from_user.username or "لا يوجد"
+    await message.reply(f"الأيدي: {user_id}\nالاسم: @{username}")
+
+# تشغيل البوت
+if __name__ == "__main__":
+    app.start()
+    assistant.start()
+    print("البوت يعمل الآن")
+    app.idle()
